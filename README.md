@@ -17,6 +17,7 @@ pip install -r .\requirements.txt
 Crear archivo ./.streamlit/secrets.toml
 Poner API KEYs: 
 - OPENAI_API_KEY="abc"
+- MONGODB-CNX="abc"
 
 ### Paso 5:
 Ejecutar app
