@@ -6,8 +6,14 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, HumanMessagePromptTemplate
 from langchain_core.runnables import RunnableWithMessageHistory
 from langchain_mongodb.chat_message_histories import MongoDBChatMessageHistory
-
-
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from rephrase import rephase_prompt
+from summary_vectorial import summaryVectorial, combine_documents
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
+from connetionDB import connected_db
 class ConsultorDeVentas:
     """
     Clase que representa un consultor de ventas basado en IA, diseñado para ayudar a las empresas
@@ -19,8 +25,25 @@ class ConsultorDeVentas:
         load_dotenv()
         self.session_id = session_id
         self.username = username
-        self.chat_model = ChatOpenAI(model="gpt-4o-mini")
+        self.chat_model = ChatOpenAI(model="gpt-4o-mini",  temperature=0,
+                                     openai_api_key=""
+        
+                                     )
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", 
+                                           openai_api_key="" )
+        
         self.chain_with_history = self._configure_chat_chain()
+        self.client = QdrantClient(
+        url=os.getenv("URL_BD_VECTOR"),
+        api_key=os.getenv("BD_VECTOR"),
+        https=True,
+        timeout=300)
+       
+        self.vector_store_page  = QdrantVectorStore(
+        client=self.client,
+        collection_name="laive",
+        embedding=self.embeddings  )
+
 
     def _configure_chat_chain(self):
         """Configura el pipeline de chat con historial de mensajes."""
@@ -67,6 +90,8 @@ Límites y Restricciones del Chatbot:
 
 Estás conversando con el usuario que se llama {self.username}
         """
+        self.system_message = system_message
+
 
         prompt_template = ChatPromptTemplate.from_messages([
             SystemMessage(content=system_message),
@@ -74,14 +99,18 @@ Estás conversando con el usuario que se llama {self.username}
             HumanMessagePromptTemplate.from_template(template='{question}')
         ])
 
+
         chat_chain = prompt_template | self.chat_model | StrOutputParser()
+        
+   
         return RunnableWithMessageHistory(
             chat_chain,
             self.get_session_history,
             input_messages_key="question",
             history_messages_key="history",
         )
-
+   
+    
     def get_session_history(self):
         """Obtiene el historial de chat desde MongoDB."""
         return MongoDBChatMessageHistory(
@@ -94,9 +123,21 @@ Estás conversando con el usuario que se llama {self.username}
     def invoke_answer(self, question: str):
         """Genera una respuesta a la consulta del usuario."""
         config = {"configurable": {"session_id": self.session_id}}
+       
         return self.chain_with_history.invoke({"question": question}, config=config)
 
-    def stream_answer(self, question: str):
+    def stream_answer( self, question: str):
         """Devuelve una respuesta en formato streaming."""
+        rephase = rephase_prompt(self.system_message, question)
+        """ Debe estar la BD resumida"""
+        chain_result = summaryVectorial(
+               rephrase_prompt=rephase,
+                llm=self.chat_model,
+                vector_store_page=self.vector_store_page,
+                search_kwargs={"k": 6} ,question  =question  )
+        print(f"{chain_result} ******")
+        
+
         config = {"configurable": {"session_id": self.session_id}}
-        return self.chain_with_history.stream({"question": question}, config=config)
+        
+        return  self.chain_with_history.stream({"question": chain_result}, config=config)
