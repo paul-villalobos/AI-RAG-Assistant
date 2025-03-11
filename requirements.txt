@@ -9,4 +9,4 @@ langchain_openai
 langchain-core
 langchain_community
 pypdf
-
+langchain_qdrant
