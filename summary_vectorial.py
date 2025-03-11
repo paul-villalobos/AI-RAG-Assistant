@@ -87,7 +87,7 @@ def generate_anwser (llm, rephrase_prompt, vector_store_page,question):
             "user_request": itemgetter("user_request"),
             "rephrased_request": itemgetter("rephrased_request"),
             "context": itemgetter("rephrased_request") 
-                    | vector_store_page.as_retriever(search_kwargs={"k": 10}) 
+                    | vector_store_page.as_retriever(search_kwargs={"k": 4})
                     | RunnableLambda(combine_documents),
         }
         | qa_prompt 

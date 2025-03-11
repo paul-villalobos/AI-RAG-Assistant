@@ -25,12 +25,8 @@ class ConsultorDeVentas:
         load_dotenv()
         self.session_id = session_id
         self.username = username
-        self.chat_model = ChatOpenAI(model="gpt-4o-mini",  temperature=0,
-                                     openai_api_key=""
-        
-                                     )
-        self.embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", 
-                                           openai_api_key="" )
+        self.chat_model = ChatOpenAI(model="gpt-4o-mini",  temperature=0)
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
         
         self.chain_with_history = self._configure_chat_chain()
         self.client = QdrantClient(
@@ -84,12 +80,14 @@ Estilo de Comunicación del Chatbot:
 - En caso de consultas fuera de su alcance, sugiere contactar a un asesor comercial o técnico de Laive.
 
 Límites y Restricciones del Chatbot:
-- No debe proporcionar precios específicos a clientes finales, solo a vendedores.
-- No debe ofrecer información interna confidencial de Laive.
-- No debe dar recomendaciones que contradigan las especificaciones técnicas de los productos.
+- Debes limitarte a responder usando únicamente el contexto brindado
 
 Estás conversando con el usuario que se llama {self.username}
         """
+        # - No debe proporcionar precios específicos a clientes finales, solo a vendedores.
+        # - No debe ofrecer información interna confidencial de Laive.
+        # - No debe dar recomendaciones que contradigan las especificaciones técnicas de los productos.
+
         self.system_message = system_message
 
 
@@ -134,7 +132,7 @@ Estás conversando con el usuario que se llama {self.username}
                rephrase_prompt=rephase,
                 llm=self.chat_model,
                 vector_store_page=self.vector_store_page,
-                search_kwargs={"k": 6} ,question  =question  )
+                search_kwargs={"k": 4} ,question  =question  )
         print(f"{chain_result} ******")
         
 
